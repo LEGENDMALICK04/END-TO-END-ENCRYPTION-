@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEGEND MALICK END TO END </title>
+</head>
+<body>
+    <h2>End-to-End Encrypted Messenger</h2>
+    <textarea id="message" placeholder="Type your message here..."></textarea><br>
+    <button onclick="encryptMessage()">Encrypt</button>
+    <p><strong>Encrypted:</strong> <span id="encrypted"></span></p>
+    
+    <button onclick="decryptMessage()">Decrypt</button>
+    <p><strong>Decrypted:</strong> <span id="decrypted"></span></p>
+
+    <script>
+        let secretKey;
+
+        // Generate AES-256-GCM Key
+        async function generateKey() {
+            secretKey = await crypto.subtle.generateKey(
+                { name: "AES-GCM", length: 256 },
+                true,
+                ["encrypt", "decrypt"]
+            );
+        }
+
+        // Encrypt Message
+        async function encryptMessage() {
+            const message = document.getElementById("message").value;
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            const iv = crypto.getRandomValues(new Uint8Array(12)); // Random IV
+            
+            const encryptedData = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                secretKey,
+                data
+            );
+
+            const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedData)));
+            const ivBase64 = btoa(String.fromCharCode(...iv));
+
+            document.getElementById("encrypted").textContent = ivBase64 + "." + encryptedBase64;
+        }
+
+        // Decrypt Message
+        async function decryptMessage() {
+            const encryptedText = document.getElementById("encrypted").textContent;
+            if (!encryptedText) return alert("No encrypted message!");
+
+            const [ivBase64, encryptedBase64] = encryptedText.split(".");
+            const iv = new Uint8Array(atob(ivBase64).split("").map(c => c.charCodeAt(0)));
+            const encryptedData = new Uint8Array(atob(encryptedBase64).split("").map(c => c.charCodeAt(0)));
+
+            const decryptedData = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: iv },
+                secretKey,
+                encryptedData
+            );
+
+            const decoder = new TextDecoder();
+            document.getElementById("decrypted").textContent = decoder.decode(decryptedData);
+        }
+
+        // Generate encryption key on page load
+        generateKey();
+    </script>
+</body>
+</html>
