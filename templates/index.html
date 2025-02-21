@@ -1,72 +1,57 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>End-to-End Encrypted Chat</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encrypted Chat</title>
+    <script>
+        async function sendMessage() {
+            const message = document.getElementById("messageInput").value;
+            const response = await fetch('/send_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message })
+            });
+            const data = await response.json();
+            document.getElementById("encryptedMessage").innerText = `Encrypted: ${data.encrypted_message}`;
+            document.getElementById("decryptedMessage").innerText = '';
+        }
+
+        async function receiveMessage() {
+            const encryptedMessage = document.getElementById("encryptedMessageInput").value;
+            const response = await fetch('/receive_message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ encrypted_message: encryptedMessage })
+            });
+            const data = await response.json();
+            document.getElementById("decryptedMessage").innerText = `Decrypted: ${data.decrypted_message}`;
+        }
+    </script>
 </head>
 <body>
-    <h2>Secure Chat</h2>
-    <textarea id="message" placeholder="Type your message"></textarea>
-    <button onclick="sendMessage()">Send</button>
-    <h3>Chat</h3>
-    <div id="chat"></div>
-
-    <script>
-        let rsaKeys;
-        let aesKey;
-
-        async function generateRSAKeys() {
-            rsaKeys = await window.crypto.subtle.generateKey(
-                {name: "RSA-OAEP", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256"},
-                true,
-                ["encrypt", "decrypt"]
-            );
-        }
-
-        async function generateAESKey() {
-            aesKey = await window.crypto.subtle.generateKey(
-                { name: "AES-GCM", length: 256 },
-                true,
-                ["encrypt", "decrypt"]
-            );
-        }
-
-        async function encryptMessage(message) {
-            let encoder = new TextEncoder();
-            let iv = window.crypto.getRandomValues(new Uint8Array(12));
-            let encrypted = await window.crypto.subtle.encrypt(
-                { name: "AES-GCM", iv: iv },
-                aesKey,
-                encoder.encode(message)
-            );
-            return { cipher: new Uint8Array(encrypted), iv: iv };
-        }
-
-        async function decryptMessage(encrypted, iv) {
-            let decrypted = await window.crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: iv },
-                aesKey,
-                encrypted
-            );
-            return new TextDecoder().decode(decrypted);
-        }
-
-        async function sendMessage() {
-            let message = document.getElementById("message").value;
-            let encryptedData = await encryptMessage(message);
-            let chat = document.getElementById("chat");
-            chat.innerHTML += `<p><b>Encrypted:</b> ${btoa(String.fromCharCode(...encryptedData.cipher))}</p>`;
-            setTimeout(async () => {
-                let decryptedText = await decryptMessage(encryptedData.cipher, encryptedData.iv);
-                chat.innerHTML += `<p><b>Decrypted:</b> ${decryptedText}</p>`;
-            }, 1000);
-        }
-
-        async function initialize() {
-            await generateRSAKeys();
-            await generateAESKey();
-        }
-
-        initialize();
-    </script>
+    <h1>Encrypted Chat</h1>
+    <div>
+        <label for="messageInput">Enter message:</label>
+        <input type="text" id="messageInput">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+    <div>
+        <h3>Encrypted Message</h3>
+        <p id="encryptedMessage"></p>
+    </div>
+    <div>
+        <label for="encryptedMessageInput">Enter encrypted message to decrypt:</label>
+        <input type="text" id="encryptedMessageInput">
+        <button onclick="receiveMessage()">Decrypt</button>
+    </div>
+    <div>
+        <h3>Decrypted Message</h3>
+        <p id="decryptedMessage"></p>
+    </div>
 </body>
 </html>
